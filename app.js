@@ -45,6 +45,69 @@ app.get(`/:user_code/todos`, async (req, res) => {
   });
 });
 
+app.post(`/:user_code/todos`, async (req, res) => {
+  const { user_code } = req.params;
+
+  const { content, perform_date } = req.body;
+
+  if (!content) {
+    res.status(400).json({
+      resultCode: "F-1",
+      msg: "content required",
+    });
+    return;
+  }
+
+  if (!perform_date) {
+    res.status(400).json({
+      resultCode: "F-1",
+      msg: "perform_date required",
+    });
+    return;
+  }
+
+  const [[lastTodoRow]] = await pool.query(
+    `
+    SELECT no
+    FROM todo
+    WHERE user_code = ?
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [user_code]
+  );
+
+  const newNo = lastTodoRow?.no + 1 || 1;
+
+  const [insertRs] = await pool.query(
+    `
+    INSERT INTO todo
+    SET reg_date = NOW(),
+    update_date = NOW(),
+    user_code = ?,
+    no = ?,
+    content = ?,
+    perform_date = ?
+    `,
+    [user_code, newNo, content, perform_date]
+  );
+
+  const [[justCreatedRow]] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WHERE id = ?
+    `,
+    [insertRs.insertId]
+  );
+
+  res.status(201).json({
+    resultCode: "S-1",
+    msg: `${newNo}번 할일이 생성되었습니다.`,
+    data: justCreatedRow,
+  });
+});
+
 app.listen(appPort, () => {
   console.log(`App listening on port ${appPort}`);
 });
