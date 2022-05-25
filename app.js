@@ -108,6 +108,60 @@ app.post(`/:user_code/todos`, async (req, res) => {
   });
 });
 
+app.patch(`/:user_code/todos/:no`, async (req, res) => {
+  const { user_code, no } = req.params;
+
+  const [[todoRow]] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WHERE user_code = ?
+    AND no = ?
+    `,
+    [user_code, no]
+  );
+
+  if (todoRow === undefined) {
+    res.status(404).json({
+      resultCode: "F-1",
+      msg: "not found",
+    });
+    return;
+  }
+
+  let { content, perform_date, is_completed } = req.body;
+
+  if (content === undefined) {
+    content = todoRow.content;
+  }
+
+  if (perform_date === undefined) {
+    perform_date = todoRow.perform_date;
+  }
+
+  if (is_completed === undefined) {
+    is_completed = todoRow.is_completed;
+  }
+
+  const [rs] = await pool.query(
+    `
+    UPDATE todo
+    SET update_date = NOW(),
+    content = ?,
+    perform_date = ?,
+    is_completed = ?
+    WHERE user_code = ?
+    AND no = ?
+    `,
+    [content, perform_date, is_completed, user_code, no]
+  );
+
+  res.json({
+    resultCode: "S-1",
+    msg: `${no}번 할일이 수정되었습니다.`,
+  });
+});
+
 app.listen(appPort, () => {
   console.log(`App listening on port ${appPort}`);
 });
